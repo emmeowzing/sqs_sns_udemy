@@ -18,6 +18,8 @@ from typing import Any, Dict, Optional, Union, Set
 import boto3
 import json
 
+from datetime import datetime as dt
+
 
 QUEUE_NAME = 'example_queue'
 QUEUE_NAME_FIFO = 'example_fifo_queue.fifo'
@@ -153,10 +155,31 @@ def get_queue_arn(resource: Any, name: str) -> str:
     return arn
 
 
+def send_message_to_queue(client: Any, url: str, msg: dict) -> Dict:
+    """
+    Send a message to a queue.
+
+    Args:
+        client: client object we can make API calls with.
+        url: queue to send the message to.
+        msg: message to send to the queue.
+
+    Returns:
+        The response object.
+    """
+    response = client.send_message(
+        QueueUrl=url,
+        **msg
+    )
+    return response
+
+
 if __name__ == '__main__':
     client = sqs_client()
     resource = sqs_resource()
     queue_urls = set()
+
+    ## Queue creation
 
     # Regular example queue (can be lossy?)
     reg_response = sqs_create_queue(client)
@@ -170,7 +193,7 @@ if __name__ == '__main__':
     queue_urls.add(QUEUE_URL_FIFO)
     print(json.dumps(fifo_response))
 
-    ##
+    ## Dead Letter
 
     # Dead letter queue
     dead_response = sqs_create_queue(client, name=QUEUE_NAME_DEAD)
@@ -184,8 +207,30 @@ if __name__ == '__main__':
     queue_urls.add(QUEUE_URL_MAIN)
     print(json.dumps(main_response))
 
-    ##
+    ## Deletion
 
     # Delete all queues. Be weary of an error message like the following from a timeout.
     # botocore.errorfactory.QueueDeletedRecently: An error occurred (AWS.SimpleQueueService.QueueDeletedRecently) when calling the CreateQueue operation: You must wait 60 seconds after deleting a queue before you can create another with the same name.
-    print(json.dumps(sqs_delete_queue(client, queue_urls)))
+    #print(json.dumps(sqs_delete_queue(client, QUEUE_URL_REG)))
+
+    ## Send a Message
+
+    example_message = {
+        'MessageAttributes': {
+            'Title': {
+                'DataType': 'String',
+                'StringValue': 'My example message'
+            },
+            'Author': {
+                'DataType': 'String',
+                'StringValue': 'Example Author'
+            },
+            'Date': {
+                'DataType': 'String',
+                'StringValue': str(dt.now())
+            }
+        },
+        'MessageBody': 'This is my first SQS message!!! :D :D'
+    }
+    send_message_response = send_message_to_queue(client, QUEUE_URL_REG, example_message)
+    print(json.dumps(send_message_response))
