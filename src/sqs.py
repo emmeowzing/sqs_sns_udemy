@@ -183,10 +183,107 @@ def send_batch_messages(client: Any, url: str, msgs: list) -> Dict:
         client: client object we can make API calls with.
         url: queue to send the message to.
         msgs: messages to send to the queue.
+
+    Returns:
+        The response object.
     """
     response = client.send_message_batch(
         QueueUrl=url,
         Entries=msgs
+    )
+    return response
+
+
+def poll_queue(client: Any, url: str, max_messages: int =10) -> Dict:
+    """
+    Poll queue for messages. NOTE: this is not guaranteed to get me all of the messages ready to be processed on my queue.
+
+    Args:
+        client: client object we can make API calls with.
+        url: queue to send the message to.
+
+    Returns:
+        The response object.
+    """
+    response = client.receive_message(
+        QueueUrl=url,
+        MaxNumberOfMessages=max_messages
+    )
+    return response
+
+
+def process_queue(client: Any, url: str) -> None:
+    """
+    Process messages from a queue.
+
+    Args:
+        client: client object we can make API calls with.
+        url: queue to send the message to.
+
+    Returns:
+        The response object from processing items on the SQS.
+    """
+
+    def delete_message_from_queue(receipt: str) -> Dict:
+        """
+        Delete a message from a queue. Only time this should be called is when we've processed it (for this script).
+
+        Args:
+            receipt: handle returned when polling messages on a queue.
+
+        Returns:
+            The response object.
+        """
+        nonlocal client, url
+        response = client.delete_message(
+            QueueUrl=url,
+            ReceiptHandle=receipt
+        )
+        return response
+
+    objects = poll_queue(client, url)
+    if 'Messages' in objects and len(objects['Messages']) != 0:
+        for message in objects['Messages']:
+            print(f"Processing message: {message['MessageId']}; body: {message['Body']}")
+            delete_message_from_queue(message['ReceiptHandle'])
+
+    return None
+
+
+def change_message_visibility_timeout(client: Any, url: str, receipt: str, timeout: int =5) -> Dict:
+    """
+    Change the visibility timeout on a queue's message.
+
+    https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html
+
+    Args:
+        client: client object we can make API calls with.
+        receipt: handle returned when polling messages on a queue.
+
+    Returns:
+        The response object.
+    """
+    response = client.change_message_visibility(
+        QueueUrl=url,
+        ReceiptHandle=receipt,
+        VisibilityTimeout=timeout
+    )
+    return response
+
+
+def purge_queue(client: Any, url: str) -> Dict:
+    """
+    Purge a queue of messages.
+
+    Args:
+        client: client object we can make API calls with.
+        url: URL of the queue.
+
+    Returns:
+        The response object.
+    """
+    response = client.purge_queue(
+        QueueUrl=url
     )
     return response
 
@@ -253,6 +350,15 @@ if __name__ == '__main__':
     # The dict.update method here was awful. Probably some mutability issue I'm now aware of? 
     entries = [{'Id': str(uuid.uuid1()), **example_message} for _ in range(4)]
     print(json.dumps(send_batch_messages(client, QUEUE_URL_REG, entries)))
+
+    # Poll queue
+    #print(json.dumps(poll_queue(client, QUEUE_URL_REG)))
+
+    # Process queue
+    process_queue(client, QUEUE_URL_REG)
+
+    # Purge a queue (only allowed every 60 seconds)
+    #print(json.dumps(purge_queue(client, QUEUE_URL_REG)))
 
     ## Deletion
 
