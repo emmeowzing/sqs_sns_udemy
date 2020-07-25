@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional, Union, Set
 
 import boto3
 import json
+import uuid
 
 from datetime import datetime as dt
 
@@ -174,6 +175,22 @@ def send_message_to_queue(client: Any, url: str, msg: dict) -> Dict:
     return response
 
 
+def send_batch_messages(client: Any, url: str, msgs: list) -> Dict:
+    """
+    Send batched messages to a queue.
+
+    Args:
+        client: client object we can make API calls with.
+        url: queue to send the message to.
+        msgs: messages to send to the queue.
+    """
+    response = client.send_message_batch(
+        QueueUrl=url,
+        Entries=msgs
+    )
+    return response
+
+
 if __name__ == '__main__':
     client = sqs_client()
     resource = sqs_resource()
@@ -207,13 +224,9 @@ if __name__ == '__main__':
     queue_urls.add(QUEUE_URL_MAIN)
     print(json.dumps(main_response))
 
-    ## Deletion
-
-    # Delete all queues. Be weary of an error message like the following from a timeout.
-    # botocore.errorfactory.QueueDeletedRecently: An error occurred (AWS.SimpleQueueService.QueueDeletedRecently) when calling the CreateQueue operation: You must wait 60 seconds after deleting a queue before you can create another with the same name.
-    #print(json.dumps(sqs_delete_queue(client, QUEUE_URL_REG)))
-
     ## Send a Message
+
+    # Send a single message.
 
     example_message = {
         'MessageAttributes': {
@@ -234,3 +247,15 @@ if __name__ == '__main__':
     }
     send_message_response = send_message_to_queue(client, QUEUE_URL_REG, example_message)
     print(json.dumps(send_message_response))
+
+    # Send a batch of messages.
+    
+    # The dict.update method here was awful. Probably some mutability issue I'm now aware of? 
+    entries = [{'Id': str(uuid.uuid1()), **example_message} for _ in range(4)]
+    print(json.dumps(send_batch_messages(client, QUEUE_URL_REG, entries)))
+
+    ## Deletion
+
+    # Delete all queues. Be weary of an error message like the following from a timeout.
+    # botocore.errorfactory.QueueDeletedRecently: An error occurred (AWS.SimpleQueueService.QueueDeletedRecently) when calling the CreateQueue operation: You must wait 60 seconds after deleting a queue before you can create another with the same name.
+    #print(json.dumps(sqs_delete_queue(client, QUEUE_URL_REG)))
