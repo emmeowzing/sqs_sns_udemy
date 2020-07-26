@@ -17,5 +17,6 @@ __all__ = [
 
 env = {
     'EMAIL': os.getenv('EMAIL'),
-    'PHONE': os.getenv('PHONE')
+    'PHONE': os.getenv('PHONE'),
+    'QUEUE_ARN': os.getenv('QUEUE_ARN')
 }

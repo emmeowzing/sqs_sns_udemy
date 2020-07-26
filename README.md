@@ -6,3 +6,4 @@ https://www.udemy.com/course/working-with-sqs-and-sns-aws-with-python-and-boto3-
 
 See my certificate of completion at
 
+https://www.udemy.com/certificate/UC-8e355136-a646-4973-b5ad-31a290ad0c0f/
