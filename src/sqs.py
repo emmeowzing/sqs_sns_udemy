@@ -67,13 +67,16 @@ def sqs_create_queue(client: Any, name: Optional[str] =None) -> Dict:
     return queue_desc
 
 
-def sqs_delete_queue(client: Any, url: Union[str, Set[str]]) -> None:
+def sqs_delete_queue(client: Any, url: Union[str, Set[str]]) -> Optional[dict]:
     """
     Delete SQS queues.
 
     Args:
         client: client object we can make API calls with.
         url: either a single url as a string, or a Set of unique URLs.
+
+    Raises:
+        A TypeError when url is neither a str nor a Set[str].
     """
     if isinstance(url, str):
         # Get a 'ResponseMetadata' dict back.
